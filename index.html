@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+        <meta charset="utf-8">
+        <title>ElasticSearch polygon geo location query</title>
+        <style type="text/css">
+            html { height: 100% }
+            body { height: 100%; margin: 0; padding: 0 }
+            #map-canvas {
+                height: 100%;
+                width: 100%;
+            }
+        </style>
+        <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+        <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+        <script>
+// <!--
+            markers = [];
+            infoWindow = new google.maps.InfoWindow();
+            defaultPosition = new google.maps.LatLng(52.519564, 13.408813);
+
+            initialTriangleCoords = [
+            new google.maps.LatLng(52.47, 13.37),
+            new google.maps.LatLng(52.52, 13.30),
+            new google.maps.LatLng(52.57, 13.45)
+            ];
+
+            var bounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(52.52, 13.3),
+                new google.maps.LatLng(52.57, 13.45)
+            );
+
+            rectangle = new google.maps.Rectangle({
+                bounds: bounds,
+                editable: true,
+                draggable: true
+            });
+
+            function initialize() {
+
+                var mapOptions = {
+                    zoom: 12,
+                    center: defaultPosition,
+                    mapTypeId: google.maps.MapTypeId.TERRAIN
+                };
+
+                map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+
+                // Construct the search polygon
+                searchPolygon = new google.maps.Polygon({
+                    map: map,
+                    paths: initialTriangleCoords,
+                    strokeColor: '#0000FF',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: '#0000FF',
+                    fillOpacity: 0.35,
+                    draggable: true,
+                    editable: true,
+                    geodesic: false
+                });
+
+                google.maps.event.addListener(searchPolygon, 'click', showArrays);
+
+                //rectangle.setMap(map);
+            }
+
+            // Add a marker to the map and push to the array.
+            function addMarker(pos, title, content)
+            {
+                var marker = new google.maps.Marker({
+                    "position": pos,
+                    "map": map,
+                    "title": title || ""
+                });
+
+                google.maps.event.addListener(marker, 'click', function() { 
+                    map.setCenter(new google.maps.LatLng(marker.position.lat(), marker.position.lng()));
+                    map.setZoom(12);
+                    showInfoWindow(content, new google.maps.LatLng(marker.position.lat(), marker.position.lng()));
+                });
+
+                markers.push(marker);
+            }
+
+            // Sets the map on all markers in the array.
+            function setAllMap(map) {
+                for (var i = 0; i < markers.length; i++) {
+                    markers[i].setMap(map);
+                }
+            }
+
+            // Removes the overlays from the map, but keeps them in the array.
+            function clearOverlays() {
+                setAllMap(null);
+            }
+
+            // Shows any overlays currently in the array.
+            function showOverlays() {
+                setAllMap(map);
+            }
+
+            // Deletes all markers in the array by removing references to them.
+            function deleteOverlays() {
+                clearOverlays();
+                markers = [];
+            }
+
+            function showInfoWindow(content, pos, _map)
+            {
+                // Replace our Info Window's content and position
+                infoWindow.setContent(content || 'no content given');
+                infoWindow.setPosition(pos || defaultPosition);
+                infoWindow.open(_map || map);
+            }
+
+            function hideInfoWindow()
+            {
+                infoWindow.close();
+            }
+
+            /** @this {google.maps.Polygon} */
+            function showArrays(event) {
+
+                // Since this Polygon only has one path, we can call getPath()
+                // to return the MVCArray of LatLngs
+                var vertices = this.getPath();
+
+                var contentString = 'ElasticSearch Polygon<br>';
+                contentString += 'Clicked Location: <br>' + event.latLng.lat() + ',' + event.latLng.lng() + '<br><br>Polygon Position:';
+
+                // Iterate over the vertices.
+                for (var i =0; i < vertices.getLength(); i++) {
+                    var xy = vertices.getAt(i);
+                    contentString += '<br>' + 'Coordinate: ' + i + '<br>' + xy.lat() +',' + xy.lng();
+                }
+
+                showInfoWindow(contentString, event.latLng);
+            }
+
+            google.maps.event.addDomListener(window, 'load', initialize);
+
+
+            function query()
+            {
+                var searchfield = $('#search');
+
+                var searchquery = {
+                    "field": {
+                        "_all": searchfield.val()
+                    }
+                };
+
+                var data = {
+                    "filter": {
+                        "geo_polygon": {
+                            "location.coordinates": {
+                                "points": [
+                                {
+                                    "lat": 52,
+                                    "lon": 13
+                                },
+                                {
+                                    "lat": 54,
+                                    "lon": 11
+                                },
+                                {
+                                    "lat": 52,
+                                    "lon": 15
+                                }
+                                ]
+                            }
+                        }
+                    }
+                }
+
+                if (searchfield.val() !== '')
+                {
+                    data.query = searchquery;
+                }
+
+                //searchPolygon = rectangle;
+
+                var coords = [];
+                var vertices = searchPolygon.getPath();
+                for (var i =0; i < vertices.getLength(); i++) {
+                    var xy = vertices.getAt(i);
+                    var p = { "lat": xy.lat(), "lon": xy.lng() };
+                    coords.push(p);
+                }
+
+                data.filter.geo_polygon['location.coordinates'].points = coords;
+                points = data.filter.geo_polygon['location.coordinates'].points;
+                console.log('geodata:', points[0], points[1], points [2]);
+
+                console.log('Query', JSON.stringify(data));
+
+                $.ajax({
+                    //url: 'http://bigdataweek1.syseleven.de:9200/imdb/actors/_search',
+                    url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
+                    type: 'POST',
+                    //contentType: 'application/json; charset=UTF-8',
+                    crossDomain: true,
+                    dataType: 'json',
+                    data: JSON.stringify(data),
+                    //data: JSON.stringify(geodata),
+                    success: function(response) {
+                        console.log(response);
+                        console.log('data: ', response.hits.hits);
+                        var data = response.hits.hits;
+                        var doc_ids = [];
+                        var source = null;
+                        var content = '<ul>';
+
+                        clearOverlays();
+                        deleteOverlays();
+                        if (data.length > 0)
+                        {
+                            for (var i = 0; i < data.length; i++)
+                            {
+                                doc_ids.push(data[i]._id);
+                                var source_link = '<a target="_blank" href="http://berlinonline.de/nachrichten/foo/' + data[i]._source.id + '">' + data[i]._source.title + '</a>';
+                                content = content + '<li>' + source_link + '</li>';
+                                latlng = new google.maps.LatLng(
+                                    data[i]._source.location.coordinates.lat,
+                                    data[i]._source.location.coordinates.lon
+                                );
+
+                                var marker_overlay_content = '' + data[i]._source.teaser + '<br><br>Original News: ' + source_link;
+                                addMarker(latlng, data[i]._source.title, marker_overlay_content);
+                            }
+
+                            content += '</ul>';
+
+                            showOverlays();
+
+                            showInfoWindow(content);
+                        }
+                        else
+                        {
+                            showInfoWindow('nothing found...');
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        var jso = jQuery.parseJSON(jqXHR.responseText);
+                        console.log(arguments);
+                        showInfoWindow('Error: ' + jso.error);
+                    }
+                });
+            }
+// -->
+        </script>
+    </head>
+    <body>
+        <div id="panel">
+            <input onclick="clearOverlays();" type=button value="Hide Overlays">
+            <input onclick="showOverlays();" type=button value="Show All Overlays">
+            <input onclick="deleteOverlays();" type=button value="Delete Overlays">
+            <input onclick="hideInfoWindow();" type=button value="Hide InfoWindow">
+            <form action="hm..." onsubmit="query(); return false;">
+                <input id="search" type="text" placeholder="<searchterm>" />
+                <input type="submit" value="querytest" onclick="query(); return false;"/>
+            </form>
+        </div>
+        <div id="map-canvas"></div>
+    </body>
+</html>
