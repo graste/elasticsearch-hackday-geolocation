@@ -30,7 +30,8 @@ define([
 
         this.queryform = $("#queryform");
         var that = this;
-        this.queryform.bind("submit", function(){that.query();});
+        // this.queryform.bind("submit", function(){that.query();});
+        this.queryform.submit(function(){that.query();return false;});
 
         this.clearOverlaysButton = $("#clearOverlays");
         this.clearOverlaysButton.bind("click", this.clearOverlays);
@@ -182,13 +183,13 @@ define([
                             doc_ids.push(data[i]._id);
                             var source_link = '<a target="_blank" href="http://berlinonline.de/nachrichten/foo/' + data[i]._id + '">' + data[i]._source.title + '</a>';
                             content = content + '<li>' + source_link + '</li>';
-                            latlng = new google.maps.LatLng(
+                            that.latlng = new google.maps.LatLng(
                                 data[i]._source.location.coordinates.lat,
                                 data[i]._source.location.coordinates.lon
                             );
 
                             var marker_overlay_content = '' + data[i]._source.teaser + '<br><br>Original News: ' + source_link;
-                            addMarker(latlng, data[i]._source.title, marker_overlay_content);
+                            that.addMarker(that.latlng, data[i]._source.title, marker_overlay_content);
                         }
 
                         content += '</ul>';
