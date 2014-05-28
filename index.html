@@ -193,7 +193,7 @@
                 var searchfield = $('#search');
 
                 var searchquery = {
-                    "field": {
+                    "match": {
                         "_all": searchfield.val()
                     }
                 };
@@ -213,7 +213,8 @@
 
                 $.ajax({
                     //url: 'http://bigdataweek1.syseleven.de:9200/imdb/actors/_search',
-                    url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
+                    //url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
+                    url: 'http://localhost:9200/localnews/news_item/_search',
                     type: 'POST',
                     //contentType: 'application/json; charset=UTF-8',
                     crossDomain: true,
@@ -234,11 +235,11 @@
                                 for (var i = 0; i < data.length; i++)
                                 {
                                     doc_ids.push(data[i]._id);
-                                    var source_link = '<a target="_blank" href="http://berlinonline.de/nachrichten/foo/' + data[i]._source.id + '">' + data[i]._source.title + '</a>';
+                                    var source_link = '<a target="_blank" href="http://berlinonline.de/nachrichten/foo/' + data[i]._id + '">' + data[i]._source.title + '</a>';
                                     content = content + '<li>' + source_link + '</li>';
                                     latlng = new google.maps.LatLng(
-                                    data[i]._source.location.coordinates.lat,
-                                    data[i]._source.location.coordinates.lon
+                                        data[i]._source.location.coordinates.lat,
+                                        data[i]._source.location.coordinates.lon
                                     );
 
                                     var marker_overlay_content = '' + data[i]._source.teaser + '<br><br>Original News: ' + source_link;
@@ -270,22 +271,22 @@
                     source: function( request, response ) {
                         var query = {
                             "query": {
-                                "text_phrase_prefix": {
+                                "match_phrase_prefix": {
                                     "title": request.term
                                 }
                             },
                             "fields": [
                                 "title",
                                 "teaser",
-                                "publishDate",
-                                "id"
+                                "publish_date"
                             ]
                         };
 
                         query.filter = getLocationFilter();
 
                         $.ajax({
-                            url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
+                            //url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
+                            url: 'http://localhost:9200/localnews/news_item/_search',
                             type: "POST",
                             dataType: "json",
                             data: JSON.stringify(query),
