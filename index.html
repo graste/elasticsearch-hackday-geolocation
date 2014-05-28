@@ -17,8 +17,8 @@
             }
         </style>
         <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
-        <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
-        <script src="http://code.jquery.com/ui/1.10.2/jquery-ui.min.js"></script>
+        <script src="js/lib/jquery-ui/jquery-1.10.2.js"></script>
+        <script src="js/lib/jquery-ui/jquery-ui-1.10.4.min.js"></script>
         <script>
             // <!--
             markers = [];
@@ -328,6 +328,26 @@
                 <input type="submit" value="querytest" onclick="query(); return false;"/>
             </form>
         </div>
+
         <div id="map-canvas"></div>
+
+        <script type="text/javascript" src="js/require.js"></script>
+        <script type="text/javascript">
+            requirejs.config({
+                baseUrl: 'js/',
+                urlArgs: "cb=" + (new Date()).getTime()
+            });
+
+            requirejs.onError = function (error) {
+                if (window.console && console.log) {
+                    console.log("RequireJS error:", error);
+                    if (error.requireType === 'timeout') {
+                        console.log('RequireJS Modules: ' + error.requireModules);
+                    }
+                }
+
+                throw error;
+            };
+        </script>
     </body>
 </html>
