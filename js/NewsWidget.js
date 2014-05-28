@@ -1,8 +1,8 @@
 define([
     "Main",
     "Widget",
-    //"async!http://maps.google.com/maps/api/js?sensor=false"
     "async!https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"
+    //"async!http://maps.google.com/maps/api/js?sensor=false"
 ], function(Main, Widget) {
 
     "use strict";
@@ -30,20 +30,19 @@ define([
 
         this.queryform = $("#queryform");
         var that = this;
-        // this.queryform.bind("submit", function(){that.query();});
         this.queryform.submit(function(){that.query();return false;});
 
         this.clearOverlaysButton = $("#clearOverlays");
-        this.clearOverlaysButton.bind("click", this.clearOverlays);
+        this.clearOverlaysButton.click(function(){that.clearOverlays();});
 
         this.deleteOverlaysButton = $("#deleteOverlays");
-        this.deleteOverlaysButton.bind("click", this.deleteOverlays);
+        this.deleteOverlaysButton.click(function(){that.deleteOverlays();});
 
         this.showOverlaysButton = $("#showOverlays");
-        this.showOverlaysButton.bind("click", this.showOverlays);
+        this.showOverlaysButton.click(function(){that.showOverlays();});
 
         this.hideInfoWindowButton = $("#hideInfoWindow");
-        this.hideInfoWindowButton.bind("click", this.hideInfoWindow);
+        this.hideInfoWindowButton.click(function(){that.hideInfoWindow();});
 
         this.markers = [];
         this.infoWindow = new google.maps.InfoWindow();
@@ -91,6 +90,7 @@ define([
 
         google.maps.event.addListener(this.searchPolygon, 'click', this.showArrays);
 
+        this.addAutoSuggest();
         //this.rectangle.setMap(map);
     };
 
