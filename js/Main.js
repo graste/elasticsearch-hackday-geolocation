@@ -1,5 +1,6 @@
 define([
     "jquery",
+    "jqueryui",
     "jsb"
 ], function() {
 

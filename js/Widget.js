@@ -1,7 +1,7 @@
 define([
     "Main",
     "Logging",
-    "lodash/objects/merge"
+    "lib/lodash-amd/modern/objects/merge"
 ], function(Main, Logging, _merge) {
 
     "use strict";

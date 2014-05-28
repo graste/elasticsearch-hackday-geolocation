@@ -17,314 +17,15 @@
             }
         </style>
         <link rel="stylesheet" href="css/ui-lightness/jquery-ui-1.10.4.min.css"></link>
-        <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
-        <script src="js/lib/jquery-ui/jquery-1.10.2.js"></script>
-        <script src="js/lib/jquery-ui/jquery-ui-1.10.4.min.js"></script>
-        <script>
-            // <!--
-            markers = [];
-            infoWindow = new google.maps.InfoWindow();
-            defaultPosition = new google.maps.LatLng(52.519564, 13.408813);
-
-            initialTriangleCoords = [
-            new google.maps.LatLng(52.47, 13.37),
-            new google.maps.LatLng(52.52, 13.30),
-            new google.maps.LatLng(52.57, 13.45)
-            ];
-
-            var bounds = new google.maps.LatLngBounds(
-            new google.maps.LatLng(52.52, 13.3),
-            new google.maps.LatLng(52.57, 13.45)
-            );
-
-            rectangle = new google.maps.Rectangle({
-                bounds: bounds,
-                editable: true,
-                draggable: true
-            });
-
-            // setup the map
-            function initialize() {
-
-                var mapOptions = {
-                    zoom: 12,
-                    center: defaultPosition,
-                    mapTypeId: google.maps.MapTypeId.TERRAIN
-                };
-
-                map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
-
-                // Construct the search polygon
-                searchPolygon = new google.maps.Polygon({
-                    map: map,
-                    paths: initialTriangleCoords,
-                    strokeColor: '#0000FF',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 2,
-                    fillColor: '#0000FF',
-                    fillOpacity: 0.35,
-                    draggable: true,
-                    editable: true,
-                    geodesic: false
-                });
-
-                google.maps.event.addListener(searchPolygon, 'click', showArrays);
-
-                //rectangle.setMap(map);
-            }
-
-            // Add a marker to the map and push to the array.
-            function addMarker(pos, title, content)
-            {
-                var marker = new google.maps.Marker({
-                    "position": pos,
-                    "map": map,
-                    "title": title || ""
-                });
-
-                google.maps.event.addListener(marker, 'click', function() { 
-                    map.setCenter(new google.maps.LatLng(marker.position.lat(), marker.position.lng()));
-                    map.setZoom(12);
-                    showInfoWindow(content, new google.maps.LatLng(marker.position.lat(), marker.position.lng()));
-                });
-
-                markers.push(marker);
-            }
-
-            // Sets the map on all markers in the array.
-            function setAllMap(map) {
-                for (var i = 0; i < markers.length; i++) {
-                    markers[i].setMap(map);
-                }
-            }
-
-            // Removes the overlays from the map, but keeps them in the array.
-            function clearOverlays() {
-                setAllMap(null);
-            }
-
-            // Shows any overlays currently in the array.
-            function showOverlays() {
-                setAllMap(map);
-            }
-
-            // Deletes all markers in the array by removing references to them.
-            function deleteOverlays() {
-                clearOverlays();
-                markers = [];
-            }
-
-            // Display info window with some content on some position
-            function showInfoWindow(content, pos, _map)
-            {
-                infoWindow.setContent(content || 'no content given');
-                infoWindow.setPosition(pos || defaultPosition);
-                infoWindow.open(_map || map);
-            }
-
-            // Hide info window
-            function hideInfoWindow()
-            {
-                infoWindow.close();
-            }
-
-            /** @this {google.maps.Polygon} */
-            function showArrays(event) {
-
-                // Since this Polygon only has one path, we can call getPath()
-                // to return the MVCArray of LatLngs
-                var vertices = this.getPath();
-
-                var contentString = 'ElasticSearch Polygon<br>';
-                contentString += 'Clicked Location: <br>' + event.latLng.lat() + ',' + event.latLng.lng() + '<br><br>Polygon Position:';
-
-                // Iterate over the vertices.
-                for (var i =0; i < vertices.getLength(); i++) {
-                    var xy = vertices.getAt(i);
-                    contentString += '<br>' + 'Coordinate: ' + i + '<br>' + xy.lat() +',' + xy.lng();
-                }
-
-                showInfoWindow(contentString, event.latLng);
-            }
-
-            google.maps.event.addDomListener(window, 'load', initialize);
-
-            // Get geo_polygon filter from current polygon drawn on map
-            function getLocationFilter()
-            {
-                var geofilter = {
-                    "geo_polygon": {
-                        "location.coordinates": {
-                            "points": [
-                            {
-                                "lat": 52,
-                                "lon": 13
-                            },
-                            {
-                                "lat": 54,
-                                "lon": 11
-                            },
-                            {
-                                "lat": 52,
-                                "lon": 15
-                            }
-                            ]
-                        }
-                    }
-                };
-
-                var coords = [];
-                var vertices = searchPolygon.getPath();
-                for (var i =0; i < vertices.getLength(); i++) {
-                    var xy = vertices.getAt(i);
-                    var p = { "lat": xy.lat(), "lon": xy.lng() };
-                    coords.push(p);
-                }
-
-                geofilter.geo_polygon['location.coordinates'].points = coords;
-                points = geofilter.geo_polygon['location.coordinates'].points;
-                console.log('geodata:', points[0], points[1], points [2]);
-
-                return geofilter;
-            }
-
-            // execute search filter query depending on currently drawn polygon on map
-            function query()
-            {
-                var searchfield = $('#search');
-
-                var searchquery = {
-                    "match": {
-                        "_all": searchfield.val()
-                    }
-                };
-
-                var data = {};
-
-                data.filter = getLocationFilter();
-
-                if (searchfield.val() !== '')
-                {
-                    data.query = searchquery;
-                }
-
-                //searchPolygon = rectangle;
-
-                console.log('Query', JSON.stringify(data));
-
-                $.ajax({
-                    //url: 'http://bigdataweek1.syseleven.de:9200/imdb/actors/_search',
-                    //url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
-                    url: 'http://localhost:9200/localnews/news_item/_search',
-                    type: 'POST',
-                    //contentType: 'application/json; charset=UTF-8',
-                    crossDomain: true,
-                    dataType: 'json',
-                    data: JSON.stringify(data),
-                    success: function(response) {
-                        console.log(response);
-                        console.log('data: ', response.hits.hits);
-                        var data = response.hits.hits;
-                        var doc_ids = [];
-                        var source = null;
-                        var content = '<ul>';
-
-                            clearOverlays();
-                            deleteOverlays();
-                            if (data.length > 0)
-                            {
-                                for (var i = 0; i < data.length; i++)
-                                {
-                                    doc_ids.push(data[i]._id);
-                                    var source_link = '<a target="_blank" href="http://berlinonline.de/nachrichten/foo/' + data[i]._id + '">' + data[i]._source.title + '</a>';
-                                    content = content + '<li>' + source_link + '</li>';
-                                    latlng = new google.maps.LatLng(
-                                        data[i]._source.location.coordinates.lat,
-                                        data[i]._source.location.coordinates.lon
-                                    );
-
-                                    var marker_overlay_content = '' + data[i]._source.teaser + '<br><br>Original News: ' + source_link;
-                                    addMarker(latlng, data[i]._source.title, marker_overlay_content);
-                                }
-
-                                content += '</ul>';
-
-                            showOverlays();
-
-                            showInfoWindow(content);
-                        }
-                        else
-                        {
-                            showInfoWindow('nothing found...');
-                        }
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        var jso = jQuery.parseJSON(jqXHR.responseText);
-                        console.log(arguments);
-                        showInfoWindow('Error: ' + jso.error);
-                    }
-                });
-            }
-
-            $(function() {
-                // add autocomplete to search field (even though this makes not much sense after all in this demo)
-                $( "#search" ).autocomplete({
-                    source: function( request, response ) {
-                        var query = {
-                            "query": {
-                                "match_phrase_prefix": {
-                                    "title": request.term
-                                }
-                            },
-                            "fields": [
-                                "title",
-                                "teaser",
-                                "publish_date"
-                            ]
-                        };
-
-                        query.filter = getLocationFilter();
-
-                        $.ajax({
-                            //url: 'http://bigdataweek1.syseleven.de:9223/berlinonline/localnews/_search',
-                            url: 'http://localhost:9200/localnews/news_item/_search',
-                            type: "POST",
-                            dataType: "json",
-                            data: JSON.stringify(query),
-                            success: function( data ) {
-                                response( $.map( data.hits.hits, function( item ) {
-                                    console.log(item);
-                                    return {
-                                        label: item.fields.title,
-                                        id: item.fields._id
-                                    }
-                                }));
-                            }
-                        });
-                    },
-                    minLength: 2,
-                    select: function( event, ui ) {
-                        console.log(ui.item); //$("#search").val(ui.item.id);
-                    },
-                    open: function() {
-                        $( this ).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
-                    },
-                    close: function() {
-                        $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
-                    }
-                })
-            });
-
-            // -->
-        </script>
     </head>
     <body>
-        <div id="panel">
-            <input onclick="clearOverlays();" type=button value="Hide Overlays">
-            <input onclick="showOverlays();" type=button value="Show All Overlays">
-            <input onclick="deleteOverlays();" type=button value="Delete Overlays">
-            <input onclick="hideInfoWindow();" type=button value="Hide InfoWindow">
-            <form action="hm..." onsubmit="query(); return false;">
+        <div id="panel" class="jsb_ jsb_NewsWidget">
+            <input id="clearOverlays" type=button value="Hide Overlays">
+            <input id="showOverlays" type=button value="Show All Overlays">
+            <input id="deleteOverlays" type=button value="Delete Overlays">
+            <input id="hideInfoWindow" type=button value="Hide InfoWindow">
+            <button type="button" class="jsb_ jsb_NotificationWidget">test</button>
+            <form id="queryform" action="hm..." onsubmit="query(); return false;">
                 <input id="search" type="text" placeholder="<searchterm>" />
                 <input type="submit" value="querytest" onclick="query(); return false;"/>
             </form>
@@ -336,7 +37,22 @@
         <script type="text/javascript">
             requirejs.config({
                 baseUrl: 'js/',
-                urlArgs: "cb=" + (new Date()).getTime()
+                urlArgs: "cb=" + (new Date()).getTime(),
+                waitSeconds : 120,
+                paths: {
+                    "jquery": "lib/jquery-ui/jquery-1.10.2",
+                    "jqueryui": "lib/jquery-ui/jquery-ui-1.10.4.min",
+                    "jsb": "lib/jsb",
+                    "async": 'require/src/async'
+                    },
+                shim: {
+                    "jqueryui": {
+                        deps: ["jquery"]
+                    },
+                    "jsb": {
+                        deps: ["jquery"]
+                    }
+                }
             });
 
             requirejs.onError = function (error) {
@@ -349,6 +65,10 @@
 
                 throw error;
             };
+
+            require(['jsb'], function() {
+                 jsb.applyBehaviour(document.body);
+            });
         </script>
     </body>
 </html>
